@@ -11,10 +11,11 @@ const app = express();
 // Security & platform middleware
 app.use(helmet());
 app.use(
-    cors({
-        origin: process.env.FRONTEND_ORIGIN || "http://localhost:3000",
-        credentials: true,
-    })
+  cors({
+    origin:
+      "https://round2-fronted-git-main-samarth1015s-projects.vercel.app",
+    credentials: true,
+  })
 );
 app.use(express.json({ limit: "200kb" }));
 
