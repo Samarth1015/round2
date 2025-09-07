@@ -15,7 +15,7 @@ export function useAnnouncements() {
     error: null,
   });
 
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchAnnouncements = useCallback(async (forceRefresh: boolean = false) => {
     try {
