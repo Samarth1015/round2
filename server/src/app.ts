@@ -4,7 +4,7 @@ import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pingRoute from "./routes/ping";
-import announcementsRouter from "./routes/announcements";
+import announcementsRouter from "./routes/announcements-fixed";
 
 const app = express();
 
