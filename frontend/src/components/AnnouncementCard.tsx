@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Announcement, ReactionType } from '../types/announcements';
 import { ReactionButton } from './ReactionButton';
 import { apiClient } from '../lib/api-client';
@@ -12,6 +12,11 @@ interface AnnouncementCardProps {
 export function AnnouncementCard({ announcement, onClick, onReactionUpdate }: AnnouncementCardProps) {
   const [optimisticReactions, setOptimisticReactions] = useState(announcement.reactions);
   const [pendingReactions, setPendingReactions] = useState<Set<ReactionType>>(new Set());
+
+  // Sync optimistic state with server data when announcement changes
+  useEffect(() => {
+    setOptimisticReactions(announcement.reactions);
+  }, [announcement.reactions]);
 
   const formatLastActivity = (dateString?: string) => {
     if (!dateString) return null;
@@ -51,11 +56,8 @@ export function AnnouncementCard({ announcement, onClick, onReactionUpdate }: An
       }
     } catch (error) {
       console.error('Failed to update reaction:', error);
-      // Revert optimistic update on error
-      setOptimisticReactions(prev => ({
-        ...prev,
-        [type]: Math.max(0, prev[type] - 1),
-      }));
+      // Revert optimistic update on error - use the original server data
+      setOptimisticReactions(announcement.reactions);
     } finally {
       setPendingReactions(prev => {
         const next = new Set(prev);
