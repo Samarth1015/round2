@@ -37,8 +37,9 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
         
         setAnnouncement(found);
         setError(null);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load announcement');
+      } catch (err: unknown) {
+        const message = typeof err === 'object' && err !== null && 'message' in err ? String((err as any).message) : 'Failed to load announcement';
+        setError(message);
       } finally {
         setLoading(false);
       }
@@ -66,7 +67,7 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
       addOptimisticComment(optimisticComment);
       
       // Make API call
-      const createdComment = await apiClient.addComment(announcement.id, commentData);
+      await apiClient.addComment(announcement.id, commentData);
       
       // Remove optimistic comment and refresh to get real data
       removeOptimisticComment(optimisticComment.id);
@@ -80,10 +81,13 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
       
       // Refresh the announcements list to show updated comment count
       if (onRefreshList) {
-        onRefreshList();
+        // Small delay to ensure backend has processed the request
+        setTimeout(() => {
+          onRefreshList();
+        }, 100);
       }
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Remove optimistic comment on error
       removeOptimisticComment(optimisticComment.id);
       throw error; // Re-throw so CommentForm can handle it
@@ -101,7 +105,7 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
     setPendingReactions(prev => new Set(prev).add(type));
 
     try {
-      let newReactions = { ...announcement.reactions };
+      const newReactions = { ...announcement.reactions };
       
       if (userReaction === type) {
         // Remove reaction
@@ -121,6 +125,13 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
       }
       
       setAnnouncement(prev => prev ? { ...prev, reactions: newReactions } : null);
+      
+      // Refresh the announcements list to show updated reaction count
+      if (onRefreshList) {
+        setTimeout(() => {
+          onRefreshList();
+        }, 100);
+      }
     } catch (error) {
       console.error('Failed to update reaction:', error);
       // Note: Could add error toast here

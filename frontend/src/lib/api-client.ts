@@ -1,4 +1,4 @@
-import { Announcement, Comment, PaginatedComments, CreateCommentDto, CreateReactionDto, ApiError, CreateAnnouncementDto } from '../types/announcements';
+import { Announcement, Comment, PaginatedComments, CreateCommentDto, CreateReactionDto, ApiError } from '../types/announcements';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -39,9 +39,6 @@ class ApiClient {
         this.etagCache.set(endpoint, etag);
       }
 
-      if (response.status === 204 || response.status === 205) {
-        return undefined as unknown as T;
-      }
       return response.json();
     } catch (error) {
       if (error instanceof Error && error.message === 'NOT_MODIFIED') {
@@ -59,9 +56,9 @@ class ApiClient {
     }
   }
 
-  async getAnnouncements(): Promise<Announcement[]> {
+  async getAnnouncements(forceRefresh: boolean = false): Promise<Announcement[]> {
     const endpoint = '/announcements';
-    const etag = this.etagCache.get(endpoint);
+    const etag = forceRefresh ? null : this.etagCache.get(endpoint);
     
     const headers: Record<string, string> = {};
     if (etag) {
@@ -79,14 +76,6 @@ class ApiClient {
     }
   }
 
-  async createAnnouncement(dto: CreateAnnouncementDto): Promise<{ id: string; title: string; createdAt: string }> {
-    const endpoint = `/announcements`;
-    return this.request(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(dto),
-    });
-  }
-
   async getComments(
     announcementId: string,
     cursor?: string | null,
@@ -95,6 +84,7 @@ class ApiClient {
     const params = new URLSearchParams();
     if (cursor) params.append('cursor', cursor);
     params.append('limit', limit.toString());
+    
     const endpoint = `/announcements/${announcementId}/comments?${params}`;
     return this.request<PaginatedComments>(endpoint);
   }
@@ -104,10 +94,16 @@ class ApiClient {
     comment: CreateCommentDto
   ): Promise<Comment> {
     const endpoint = `/announcements/${announcementId}/comments`;
-    return this.request<Comment>(endpoint, {
+    
+    // Clear the announcements ETag cache BEFORE making the request
+    this.etagCache.delete('/announcements');
+    
+    const result = await this.request<Comment>(endpoint, {
       method: 'POST',
       body: JSON.stringify(comment),
     });
+    
+    return result;
   }
 
   async addReaction(
@@ -117,15 +113,21 @@ class ApiClient {
   ): Promise<{ ok: true }> {
     const endpoint = `/announcements/${announcementId}/reactions`;
     const headers: Record<string, string> = {};
+    
     if (idempotencyKey) {
       headers['Idempotency-Key'] = idempotencyKey;
     }
 
-    return this.request<{ ok: true }>(endpoint, {
+    // Clear the announcements ETag cache BEFORE making the request
+    this.etagCache.delete('/announcements');
+
+    const result = await this.request<{ ok: true }>(endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(reaction),
     });
+    
+    return result;
   }
 
   async removeReaction(
@@ -133,6 +135,10 @@ class ApiClient {
     userId: string
   ): Promise<void> {
     const endpoint = `/announcements/${announcementId}/reactions`;
+    
+    // Clear the announcements ETag cache BEFORE making the request
+    this.etagCache.delete('/announcements');
+    
     await this.request(endpoint, {
       method: 'DELETE',
       headers: {
