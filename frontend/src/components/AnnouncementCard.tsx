@@ -12,7 +12,6 @@ interface AnnouncementCardProps {
 export function AnnouncementCard({ announcement, onClick, onReactionUpdate }: AnnouncementCardProps) {
   const [optimisticReactions, setOptimisticReactions] = useState(announcement.reactions);
   const [pendingReactions, setPendingReactions] = useState<Set<ReactionType>>(new Set());
-  const [userReaction, setUserReaction] = useState<ReactionType | null>(null);
 
   const formatLastActivity = (dateString?: string) => {
     if (!dateString) return null;
@@ -34,47 +33,29 @@ export function AnnouncementCard({ announcement, onClick, onReactionUpdate }: An
 
   const handleReactionClick = async (type: ReactionType) => {
     if (pendingReactions.has(type)) return;
-
-    const userId = 'user-123'; // In real app, get from auth context
-    const idempotencyKey = `${announcement.id}-${userId}-${type}-${Date.now()}`;
     
     setPendingReactions(prev => new Set(prev).add(type));
 
     try {
-      if (userReaction === type) {
-        // Remove reaction
-        setOptimisticReactions(prev => ({
-          ...prev,
-          [type]: Math.max(0, prev[type] - 1),
-        }));
-        setUserReaction(null);
-        
-        // await apiClient.removeReaction(announcement.id, userId);
-      } else {
-        // Add/change reaction
-        const newReactions = { ...optimisticReactions };
-        
-        // Remove previous reaction if exists
-        if (userReaction) {
-          newReactions[userReaction] = Math.max(0, newReactions[userReaction] - 1);
-        }
-        
-        // Add new reaction
-        newReactions[type] = newReactions[type] + 1;
-        
-        setOptimisticReactions(newReactions);
-        setUserReaction(type);
-        
-        await apiClient.addReaction(announcement.id, { type, userId }, idempotencyKey);
-      }
+      // Optimistically update the count
+      setOptimisticReactions(prev => ({
+        ...prev,
+        [type]: prev[type] + 1,
+      }));
       
-      // Refresh parent data
-      onReactionUpdate?.();
+      // Make API call
+      await apiClient.addReaction(announcement.id, { type });
+      
+      if (onReactionUpdate) {
+        onReactionUpdate();
+      }
     } catch (error) {
-      // Rollback optimistic update
-      setOptimisticReactions(announcement.reactions);
-      setUserReaction(null);
       console.error('Failed to update reaction:', error);
+      // Revert optimistic update on error
+      setOptimisticReactions(prev => ({
+        ...prev,
+        [type]: Math.max(0, prev[type] - 1),
+      }));
     } finally {
       setPendingReactions(prev => {
         const next = new Set(prev);
@@ -116,21 +97,21 @@ export function AnnouncementCard({ announcement, onClick, onReactionUpdate }: An
         <ReactionButton
           type="up"
           count={optimisticReactions.up}
-          isActive={userReaction === 'up'}
+          isActive={false}
           isDisabled={pendingReactions.has('up')}
           onClick={() => handleReactionClick('up')}
         />
         <ReactionButton
           type="down"
           count={optimisticReactions.down}
-          isActive={userReaction === 'down'}
+          isActive={false}
           isDisabled={pendingReactions.has('down')}
           onClick={() => handleReactionClick('down')}
         />
         <ReactionButton
           type="heart"
           count={optimisticReactions.heart}
-          isActive={userReaction === 'heart'}
+          isActive={false}
           isDisabled={pendingReactions.has('heart')}
           onClick={() => handleReactionClick('heart')}
         />

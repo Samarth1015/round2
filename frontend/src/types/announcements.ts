@@ -32,7 +32,6 @@ export interface CreateCommentDto {
 
 export interface CreateReactionDto {
   type: ReactionType;
-  userId?: string;
 }
 
 export interface ApiError {

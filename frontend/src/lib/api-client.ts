@@ -108,43 +108,19 @@ class ApiClient {
 
   async addReaction(
     announcementId: string,
-    reaction: CreateReactionDto,
-    idempotencyKey?: string
+    reaction: CreateReactionDto
   ): Promise<{ ok: true }> {
     const endpoint = `/announcements/${announcementId}/reactions`;
-    const headers: Record<string, string> = {};
-    
-    if (idempotencyKey) {
-      headers['Idempotency-Key'] = idempotencyKey;
-    }
 
     // Clear the announcements ETag cache BEFORE making the request
     this.etagCache.delete('/announcements');
 
     const result = await this.request<{ ok: true }>(endpoint, {
       method: 'POST',
-      headers,
       body: JSON.stringify(reaction),
     });
     
     return result;
-  }
-
-  async removeReaction(
-    announcementId: string,
-    userId: string
-  ): Promise<void> {
-    const endpoint = `/announcements/${announcementId}/reactions`;
-    
-    // Clear the announcements ETag cache BEFORE making the request
-    this.etagCache.delete('/announcements');
-    
-    await this.request(endpoint, {
-      method: 'DELETE',
-      headers: {
-        'x-user-id': userId,
-      },
-    });
   }
 }
 

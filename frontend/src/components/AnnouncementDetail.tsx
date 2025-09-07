@@ -18,7 +18,6 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
   const [error, setError] = useState<string | null>(null);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [pendingReactions, setPendingReactions] = useState<Set<ReactionType>>(new Set());
-  const [userReaction, setUserReaction] = useState<ReactionType | null>(null);
   
   const { addOptimisticComment, removeOptimisticComment, refresh: refreshComments } = useComments(announcementId);
 
@@ -101,33 +100,17 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
 
   const handleReactionClick = async (type: ReactionType) => {
     if (!announcement || pendingReactions.has(type)) return;
-
-    const userId = 'user-123'; // In real app, get from auth context
-    const idempotencyKey = `${announcement.id}-${userId}-${type}-${Date.now()}`;
     
     setPendingReactions(prev => new Set(prev).add(type));
 
     try {
+      // Optimistically update the count
       const newReactions = { ...announcement.reactions };
-      
-      if (userReaction === type) {
-        // Remove reaction
-        newReactions[type] = Math.max(0, newReactions[type] - 1);
-        setUserReaction(null);
-        
-        await apiClient.removeReaction(announcement.id, userId);
-      } else {
-        // Add/change reaction
-        if (userReaction) {
-          newReactions[userReaction] = Math.max(0, newReactions[userReaction] - 1);
-        }
-        newReactions[type] = newReactions[type] + 1;
-        setUserReaction(type);
-        
-        await apiClient.addReaction(announcement.id, { type, userId }, idempotencyKey);
-      }
-      
+      newReactions[type] = newReactions[type] + 1;
       setAnnouncement(prev => prev ? { ...prev, reactions: newReactions } : null);
+      
+      // Make API call
+      await apiClient.addReaction(announcement.id, { type });
       
       // Refresh the announcements list to show updated reaction count
       if (onRefreshList) {
@@ -137,7 +120,10 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
       }
     } catch (error) {
       console.error('Failed to update reaction:', error);
-      // Note: Could add error toast here
+      // Revert optimistic update on error
+      const revertedReactions = { ...announcement.reactions };
+      revertedReactions[type] = Math.max(0, revertedReactions[type] - 1);
+      setAnnouncement(prev => prev ? { ...prev, reactions: revertedReactions } : null);
     } finally {
       setPendingReactions(prev => {
         const next = new Set(prev);
@@ -201,21 +187,21 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
             <ReactionButton
               type="up"
               count={announcement.reactions.up}
-              isActive={userReaction === 'up'}
+              isActive={false}
               isDisabled={pendingReactions.has('up')}
               onClick={() => handleReactionClick('up')}
             />
             <ReactionButton
               type="down"
               count={announcement.reactions.down}
-              isActive={userReaction === 'down'}
+              isActive={false}
               isDisabled={pendingReactions.has('down')}
               onClick={() => handleReactionClick('down')}
             />
             <ReactionButton
               type="heart"
               count={announcement.reactions.heart}
-              isActive={userReaction === 'heart'}
+              isActive={false}
               isDisabled={pendingReactions.has('heart')}
               onClick={() => handleReactionClick('heart')}
             />
