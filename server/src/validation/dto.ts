@@ -27,13 +27,11 @@ export function validatePaginationDto(query: any): { cursor: string | null; limi
     return { cursor, limit };
 }
 
-export function validateAddReactionDto(body: any): { type: ReactionType; userId?: string } {
+export function validateAddReactionDto(body: any): { type: ReactionType } {
     const errors: any[] = [];
     const allowed: ReactionType[] = ["up", "down", "heart"];
     const rawType = typeof body?.type === "string" ? body.type.trim().toLowerCase() : body?.type;
     if (!allowed.includes(rawType)) errors.push({ field: "type", message: "type must be up|down|heart" });
-    if (body?.userId != null && typeof body.userId !== "string")
-        errors.push({ field: "userId", message: "userId must be string" });
     if (errors.length) {
         const err: any = new Error("Validation failed");
         err.status = 400;
@@ -41,9 +39,7 @@ export function validateAddReactionDto(body: any): { type: ReactionType; userId?
         err.details = errors;
         throw err;
     }
-    const dto: { type: ReactionType; userId?: string } = { type: rawType } as any;
-    if (body.userId) dto.userId = String(body.userId);
-    return dto;
+    return { type: rawType };
 }
 
 export function validateCreateAnnouncementDto(body: any): { title: string } {

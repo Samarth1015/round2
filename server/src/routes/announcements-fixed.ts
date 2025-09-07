@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { InMemoryAnnouncementsRepository } from "../model/repository";
-import { validateAddCommentDto, validatePaginationDto, validateAddReactionDto } from "../validation/dto";
+import { validateAddCommentDto, validatePaginationDto } from "../validation/dto";
 import rateLimit from "express-rate-limit";
 
 const repo = InMemoryAnnouncementsRepository.getInstance();
@@ -61,33 +61,13 @@ router.get("/:id/comments", async (req: Request, res: Response, next: NextFuncti
     }
 });
 
-// POST /announcements/:id/reactions with Idempotency-Key
-router.post(
-    "/:id/reactions",
-    rejectUnknownFields<{ type: "up" | "down" | "heart"; userId?: string }>(["type", "userId"]),
-    async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const id = String(req.params.id);
-            const idempotencyKey = String(req.header("Idempotency-Key") || "");
-            const dto = validateAddReactionDto(req.body);
-            const result = repo.addReaction(id, dto, idempotencyKey);
-            res.status(201).json(result);
-        } catch (err) {
-            next(err);
-        }
-    }
-);
-
-// DELETE /announcements/:id/reactions uses x-user-id
-router.delete("/:id/reactions", async (req: Request, res: Response, next: NextFunction) => {
+// POST /announcements/:id/reactions - simple counter increment (no validation)
+router.post("/:id/reactions", async (req: Request, res: Response, next: NextFunction) => {
     try {
         const id = String(req.params.id);
-        const userId = String(req.header("x-user-id") || "");
-        if (!userId) {
-            return next({ status: 400, code: "missing_user_id", message: "x-user-id header required" });
-        }
-        repo.removeReaction(id, userId);
-        res.status(204).end();
+        const type = String(req.body?.type || "up").toLowerCase();
+        const result = repo.addReaction(id, { type: type as any });
+        res.status(201).json(result);
     } catch (err) {
         next(err);
     }

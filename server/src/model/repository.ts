@@ -36,12 +36,7 @@ interface AnnouncementsRepository {
     addAnnouncement(dto: { title: string }): Announcement;
     addComment(announcementId: string, dto: { authorName: string; text: string }): Comment;
     getComments(announcementId: string, query: PaginationQuery): PaginatedComments;
-    addReaction(
-        announcementId: string,
-        dto: { type: ReactionType; userId?: string },
-        idempotencyKey?: string
-    ): { ok: true };
-    removeReaction(announcementId: string, userId: string): void;
+    addReaction(announcementId: string, dto: { type: string }): { ok: true };
 }
 
 export class InMemoryAnnouncementsRepository implements AnnouncementsRepository {
@@ -57,26 +52,20 @@ export class InMemoryAnnouncementsRepository implements AnnouncementsRepository 
         { id: "2", title: "Gym closed for cleaning", createdAt: new Date().toISOString() },
     ];
     private comments: Comment[] = [];
-    private reactions: Reaction[] = [];
-    private idempotencyStore: Map<string, { at: number }> = new Map();
+    private reactionCounts: Map<string, { up: number; down: number; heart: number }> = new Map([
+        ["1", { up: 0, down: 0, heart: 0 }],
+        ["2", { up: 0, down: 0, heart: 0 }],
+    ]);
 
     private constructor() {}
 
     private computeAggregates() {
-        const now = Date.now();
-        // cleanup old idempotency keys (>5min)
-        for (const [k, v] of this.idempotencyStore.entries()) {
-            if (now - v.at > 5 * 60 * 1000) this.idempotencyStore.delete(k);
-        }
-
         const aggregates = this.announcements.map((a) => {
             const commentCount = this.comments.filter((c) => c.announcementId === a.id).length;
-            const r = this.reactions.filter((x) => x.announcementId === a.id);
-            const reactions = {
-                up: r.filter((x) => x.type === "up").length,
-                down: r.filter((x) => x.type === "down").length,
-                heart: r.filter((x) => x.type === "heart").length,
-            };
+            const reactions = this.reactionCounts.get(a.id) || { up: 0, down: 0, heart: 0 };
+            
+            console.log(`Computing aggregates for ${a.id}:`, reactions);
+            
             const sortedCommentTimes = this.comments
                 .filter((c) => c.announcementId === a.id)
                 .map((c) => c.createdAt)
@@ -84,11 +73,8 @@ export class InMemoryAnnouncementsRepository implements AnnouncementsRepository 
             const lastFromComments = sortedCommentTimes.length
                 ? sortedCommentTimes[sortedCommentTimes.length - 1]
                 : undefined;
-            const sortedReactionTimes = r.map((x) => x.createdAt).sort();
-            const lastFromReactions = sortedReactionTimes.length
-                ? sortedReactionTimes[sortedReactionTimes.length - 1]
-                : undefined;
-            const activity = [a.createdAt, lastFromComments, lastFromReactions].filter(Boolean) as string[];
+            
+            const activity = [a.createdAt, lastFromComments].filter(Boolean) as string[];
             const lastActivityAt = activity.length ? activity.sort()[activity.length - 1] : undefined;
             return { id: a.id, title: a.title, commentCount, reactions, lastActivityAt };
         });
@@ -145,11 +131,7 @@ export class InMemoryAnnouncementsRepository implements AnnouncementsRepository 
         return { items: page, nextCursor };
     }
 
-    addReaction(
-        announcementId: string,
-        dto: { type: ReactionType; userId?: string },
-        idempotencyKey?: string
-    ): { ok: true } {
+    addReaction(announcementId: string, dto: { type: string }): { ok: true } {
         const exists = this.announcements.some((a) => a.id === announcementId);
         if (!exists) {
             const err: any = new Error("Announcement not found");
@@ -157,29 +139,29 @@ export class InMemoryAnnouncementsRepository implements AnnouncementsRepository 
             err.code = "not_found";
             throw err;
         }
-        const userId = dto.userId || "anonymous";
 
-        if (idempotencyKey) {
-            if (this.idempotencyStore.has(idempotencyKey)) {
-                return { ok: true };
-            }
+        // Ensure reaction counts exist for this announcement
+        if (!this.reactionCounts.has(announcementId)) {
+            this.reactionCounts.set(announcementId, { up: 0, down: 0, heart: 0 });
         }
-
-        // ensure single reaction per user per announcement
-        const existingIdx = this.reactions.findIndex((r) => r.announcementId === announcementId && r.userId === userId);
-        if (existingIdx >= 0) this.reactions.splice(existingIdx, 1);
-        this.reactions.push({ announcementId, userId, type: dto.type, createdAt: new Date().toISOString() });
-
-        if (idempotencyKey) this.idempotencyStore.set(idempotencyKey, { at: Date.now() });
+        
+        const current = this.reactionCounts.get(announcementId)!;
+        
+        // Map any type to our standard types, default to 'up' if not recognized
+        const type = dto.type.toLowerCase();
+        if (type === 'up' || type === 'down' || type === 'heart') {
+            current[type] += 1;
+        } else {
+            // For any other type, just increment 'up' as default
+            current.up += 1;
+        }
+        
+        // Update the map with the modified counts
+        this.reactionCounts.set(announcementId, current);
+        
+        console.log(`Reaction added: ${announcementId} - ${type} = ${current[type as keyof typeof current]}`);
+        
         return { ok: true };
-    }
-
-    removeReaction(announcementId: string, userId: string): void {
-        const before = this.reactions.length;
-        this.reactions = this.reactions.filter((r) => !(r.announcementId === announcementId && r.userId === userId));
-        if (before === this.reactions.length) {
-            // not found is fine for idempotent delete
-        }
     }
 }
 

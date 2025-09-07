@@ -18,14 +18,14 @@ app.use(
 );
 app.use(express.json({ limit: "200kb" }));
 
-// Global rate limit: 60 req/min/IP
-const globalLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    limit: 60,
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-app.use(globalLimiter);
+// // Global rate limit: 60 req/min/IP
+// const globalLimiter = rateLimit({
+//     windowMs: 60 * 1000,
+//     limit: 60,
+//     standardHeaders: true,
+//     legacyHeaders: false,
+// });
+// app.use(globalLimiter);
 
 // Health
 app.get("/health", (_req, res) => {
