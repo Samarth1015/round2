@@ -9,9 +9,10 @@ import { apiClient } from '../lib/api-client';
 interface AnnouncementDetailProps {
   announcementId: string;
   onBack: () => void;
+  onRefreshList?: () => void;
 }
 
-export function AnnouncementDetail({ announcementId, onBack }: AnnouncementDetailProps) {
+export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: AnnouncementDetailProps) {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +77,11 @@ export function AnnouncementDetail({ announcementId, onBack }: AnnouncementDetai
         ...prev,
         commentCount: prev.commentCount + 1,
       } : null);
+      
+      // Refresh the announcements list to show updated comment count
+      if (onRefreshList) {
+        onRefreshList();
+      }
       
     } catch (error: any) {
       // Remove optimistic comment on error

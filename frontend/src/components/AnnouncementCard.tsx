@@ -49,7 +49,7 @@ export function AnnouncementCard({ announcement, onClick, onReactionUpdate }: An
         }));
         setUserReaction(null);
         
-        await apiClient.removeReaction(announcement.id, userId);
+        // await apiClient.removeReaction(announcement.id, userId);
       } else {
         // Add/change reaction
         const newReactions = { ...optimisticReactions };

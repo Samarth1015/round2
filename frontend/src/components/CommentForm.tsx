@@ -46,7 +46,7 @@ export function CommentForm({ onSubmit, isSubmitting = false }: CommentFormProps
       // Clear form on success
       setFormData({ authorName: '', text: '' });
       setErrors({});
-    } catch (error) {
+    } catch {
       // Error handling is done by parent component
     }
   };

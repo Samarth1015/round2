@@ -32,11 +32,12 @@ export function useComments(announcementId: string) {
         hasMore: result.nextCursor !== null,
         nextCursor: result.nextCursor,
       }));
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const message = typeof err === 'object' && err !== null && 'message' in err ? String((err as any).message) : 'Failed to fetch comments';
       setState(prev => ({
         ...prev,
         loading: false,
-        error: error.message || 'Failed to fetch comments',
+        error: message,
       }));
     }
   }, [announcementId]);

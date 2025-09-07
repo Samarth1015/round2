@@ -95,7 +95,6 @@ class ApiClient {
     const params = new URLSearchParams();
     if (cursor) params.append('cursor', cursor);
     params.append('limit', limit.toString());
-    
     const endpoint = `/announcements/${announcementId}/comments?${params}`;
     return this.request<PaginatedComments>(endpoint);
   }
@@ -118,7 +117,6 @@ class ApiClient {
   ): Promise<{ ok: true }> {
     const endpoint = `/announcements/${announcementId}/reactions`;
     const headers: Record<string, string> = {};
-    
     if (idempotencyKey) {
       headers['Idempotency-Key'] = idempotencyKey;
     }
