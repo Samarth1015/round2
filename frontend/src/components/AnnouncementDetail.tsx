@@ -38,7 +38,10 @@ export function AnnouncementDetail({ announcementId, onBack, onRefreshList }: An
         setAnnouncement(found);
         setError(null);
       } catch (err: unknown) {
-        const message = typeof err === 'object' && err !== null && 'message' in err ? String((err as any).message) : 'Failed to load announcement';
+        const message =
+          typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as { message?: unknown }).message)
+            : 'Failed to load announcement';
         setError(message);
       } finally {
         setLoading(false);

@@ -33,7 +33,10 @@ export function useComments(announcementId: string) {
         nextCursor: result.nextCursor,
       }));
     } catch (err: unknown) {
-      const message = typeof err === 'object' && err !== null && 'message' in err ? String((err as any).message) : 'Failed to fetch comments';
+      const message =
+        typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message?: unknown }).message)
+          : 'Failed to fetch comments';
       setState(prev => ({
         ...prev,
         loading: false,

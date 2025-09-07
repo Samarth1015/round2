@@ -1,5 +1,5 @@
 import { apiClient } from '../../lib/api-client';
-import { mockAnnouncements, mockPaginatedComments, resetMocks } from '../mocks/api';
+import { mockAnnouncements, resetMocks } from '../mocks/api';
 
 // Mock fetch
 global.fetch = jest.fn();

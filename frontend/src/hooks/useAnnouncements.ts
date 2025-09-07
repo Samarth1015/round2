@@ -26,8 +26,12 @@ export function useAnnouncements() {
         loading: false,
         error: null,
       }));
-    } catch (error: any) {
-      if (error.message === 'NOT_MODIFIED') {
+    } catch (error: unknown) {
+      const message =
+        typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message?: unknown }).message)
+          : undefined;
+      if (message === 'NOT_MODIFIED') {
         // Just update loading state, keep existing data
         setState(prev => ({ ...prev, loading: false }));
         return;
@@ -36,7 +40,7 @@ export function useAnnouncements() {
       setState(prev => ({
         ...prev,
         loading: false,
-        error: error.message || 'Failed to fetch announcements',
+        error: message || 'Failed to fetch announcements',
       }));
     }
   }, []);
