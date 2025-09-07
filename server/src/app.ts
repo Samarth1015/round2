@@ -12,8 +12,7 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin:
-      "https://round2-fronted-git-main-samarth1015s-projects.vercel.app",
+    origin: true,
     credentials: true,
   })
 );
